@@ -8,6 +8,7 @@ import ProductTable from "../products/ProductTable";
 import { MedicineView } from "@/types/medicine";
 import toast from "react-hot-toast";
 import { OrderDTO } from "@/types/order";
+import LoadingSpinner from "../ui/LoadingSpinner";
 
 export default function ProductTableWrapper() {
   const { state, dispatch } = useCartContext() as CartContextType;
@@ -57,7 +58,7 @@ export default function ProductTableWrapper() {
 
     // fetch current customer
     const customerResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/customers/me`
+      `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/me`
     );
 
     if (!customerResponse.ok) {
@@ -81,7 +82,7 @@ export default function ProductTableWrapper() {
 
     // create order
     const orderResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/orders`,
+      `${process.env.NEXT_PUBLIC_BASE_API_URL}/orders`,
       {
         method: "POST",
         headers: {
@@ -105,19 +106,21 @@ export default function ProductTableWrapper() {
 
   if (isOrderConfirmed) {
     return (
-      <>
-        <div className="text-center">Đơn hàng đã đặt thành công!</div>
-        <Link href="/products">
-          <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-            Tiếp tục mua hàng
-          </button>
+      <div className="flex flex-col items-center gap-4">
+        <h2 className="text-center text-lg">Đơn hàng đã đặt thành công!</h2>
+        <Link
+          href="/products"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mx-auto"
+        >
+          Tiếp tục mua hàng
         </Link>
-      </>
+      </div>
     );
   }
 
   return (
     <>
+      <h1 className="text-3xl font-bold mb-6">Xác nhận đơn hàng</h1>
       {isLoading ? (
         <div className="text-center">Loading products...</div>
       ) : (
@@ -176,19 +179,21 @@ export default function ProductTableWrapper() {
         </div>
 
         {/* Nút xác nhận */}
-        <button
-          type="submit"
-          className="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600"
-        >
-          Xác nhận đặt hàng
-        </button>
+        <div className="flex justify-start h-12 gap-4">
+          <button
+            type="submit"
+            className="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600"
+          >
+            Xác nhận đặt hàng
+          </button>
 
-        <Link
-          href="/products"
-          className="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600"
-        >
-          Tiếp tục mua hàng
-        </Link>
+          <Link
+            href="/products"
+            className="bg-indigo-500 text-white px-6 py-3 rounded hover:bg-indigo-600"
+          >
+            Tiếp tục mua hàng
+          </Link>
+        </div>
       </form>
     </>
   );
