@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 
 import { MedicineView } from "@/types/medicine";
 import { MedicineImage } from "@/types/medicines-image";
@@ -9,16 +10,13 @@ import ReviewStars from "../ui/ReviewStars";
 import { CartContextType, useCartContext } from "@/contexts/CartContext";
 import { getValidatedImageSrc } from "@/utils/helpers";
 import DefaultImage from "../../public/images/default.jpg";
-import NotificationOverlay from "../ui/NotificationOverlay";
 import { MedicineDetailView } from "@/types/medicine-detail";
 
 export default function ProductDetail({
   product,
-  quantityInStock,
   productImages,
 }: {
   product: MedicineDetailView;
-  quantityInStock: number;
   productImages: MedicineImage[];
 }) {
   const navLinks = [
@@ -40,23 +38,25 @@ export default function ProductDetail({
   const [quantity, setQuantity] = useState(1);
   const [isActiveLink, setIsActiveLink] = useState(navLinks[0].href);
   const { dispatch } = useCartContext() as CartContextType;
-  const [notification, setNotification] = useState("");
 
   const addProductToCart = (product: MedicineView) => {
+    console.log(product);
+    // Check if product is out of stock
+    if (product.totalQuantity <= 0) {
+      toast("Sản phẩm đã hết hàng", {
+        icon: "⚠",
+      });
+      return;
+    }
     dispatch({
       type: "ADD_TO_CART",
       payload: { productUuid: product.uuid, quantity: 1 },
     });
-    setNotification("Thêm vào giỏ hàng thành công");
+    toast.success("Thêm vào giỏ hàng thành công");
   };
 
   return (
     <div>
-      <NotificationOverlay
-        message={notification}
-        onClose={() => setNotification("")}
-      />
-
       <div className="flex flex-col md:flex-row justify-between gap-10 mb-4 sm:w-3/4 md:w-full mx-auto">
         {/* Product thumbnail */}
         <div className="w-full md:w-1/2">
@@ -111,7 +111,8 @@ export default function ProductDetail({
         <div className="w-full md:w-1/2">
           <h2 className="text-4xl font-bold mb-2">{product.name}</h2>
           <h3 className="text-xl text-blue-500 font-bold mb-2">
-            {product.price} đ/{product.quantityUnit}
+            {Number(product.price).toLocaleString("vi-VN")} đ/
+            {product.quantityUnit}
           </h3>
           <p className="text-lg text-gray-700 line-clamp-6 overflow-y-auto">
             {product.description}
@@ -140,7 +141,7 @@ export default function ProductDetail({
             </div>
           </div>
           <p className="text-lg text-gray-500 mb-4">
-            Available: {quantityInStock}
+            Available: {product.totalQuantity}
           </p>
           <div className="flex flex-wrap items-center gap-4 w-full">
             <span className="text-lg">Reviews: </span>

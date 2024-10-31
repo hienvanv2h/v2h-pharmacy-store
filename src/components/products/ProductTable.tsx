@@ -5,16 +5,13 @@ import { CartContextType, useCartContext } from "@/contexts/CartContext";
 
 export default function ProductTable({
   products,
+  totalPrice,
 }: {
   products: MedicineView[];
+  totalPrice: number;
 }) {
   const { state } = useCartContext() as CartContextType;
   const { cart } = state;
-
-  const totalPrice = products.reduce((accumulator, product) => {
-    const item = cart.find((item) => item.productUuid === product.uuid);
-    return accumulator + (item?.quantity || 0) * product.price;
-  }, 0);
 
   const VATRate = 0.1;
   const VAT = VATRate * totalPrice;

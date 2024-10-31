@@ -8,8 +8,13 @@ import { createOrderAndDetailTransaction } from "@/db/transactions";
 
 export async function POST(request: NextRequest) {
   try {
-    const { orderDto, items } = await request.json();
-    const response = await createOrderAndDetailTransaction(orderDto, items);
+    const { orderDto, items, paymentMethod } = await request.json();
+
+    const response = await createOrderAndDetailTransaction(
+      orderDto,
+      items,
+      paymentMethod
+    );
     if (response) {
       return NextResponse.json(
         { message: "Order created successfully" },

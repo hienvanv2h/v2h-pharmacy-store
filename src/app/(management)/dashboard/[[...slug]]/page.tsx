@@ -7,6 +7,7 @@ import MedicineDashboard from "@/components/dashboard/medicine/MedicineDashboard
 import SupplierDashboard from "@/components/dashboard/supplier/SupplierDashboard";
 import CustomerDashboard from "@/components/dashboard/customer/CustomerDashboard";
 import OrderDashboard from "@/components/dashboard/order/OrderDashboard";
+import ReceiptDashboard from "@/components/dashboard/receipt/ReceiptDashboard";
 
 const dashboardComponents: Partial<
   Record<DashboardCategoryEnum, () => JSX.Element>
@@ -15,7 +16,7 @@ const dashboardComponents: Partial<
   [DashboardCategoryEnum.SUPPLIERS]: SupplierDashboard,
   [DashboardCategoryEnum.CUSTOMERS]: CustomerDashboard,
   [DashboardCategoryEnum.ORDERS]: OrderDashboard,
-  // [DashboardCategoryEnum.RECEIPTS]: ReceiptDashboard,
+  [DashboardCategoryEnum.RECEIPTS]: ReceiptDashboard,
 };
 
 export default function DashboardPage({

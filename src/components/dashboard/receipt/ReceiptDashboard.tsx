@@ -3,40 +3,32 @@ import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
-import { Supplier, SupplierDTO } from "@/types/supplier";
+import { ReceiptView } from "@/types/receipt";
 import { dashboardSideItems } from "@/lib/dashboard-items";
 import RefreshIcon from "../../../public/images/refresh-cw-alt.svg";
-import SupplierTable from "./SupplierTable";
+import ReceptTable from "./ReceiptTable";
 import LoadingTable from "../LoadingTable";
 import Pagination from "@/components/ui/Pagination";
+import { DashboardCategoryEnum } from "@/lib/dashboard-categories";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
-const SupplierFormModal = dynamic(() => import("./SupplierFormModal"), {
+const ReceiptCreateModal = dynamic(() => import("./ReceiptCreateModal"), {
   loading: () => <div>Loading modal...</div>,
   ssr: false,
 });
 
-const createEmptySupplierDto = (): SupplierDTO => {
-  return {
-    name: "",
-    phoneNumber: "",
-    address: "",
-  };
-};
-
-export default function SupplierDashboard() {
-  const [tableData, setTableData] = useState<Supplier[]>([]);
+export default function ReceiptDashboard() {
+  const [tableData, setTableData] = useState<ReceiptView[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [emptyData, setEmptyData] = useState<SupplierDTO>(
-    createEmptySupplierDto()
-  );
 
   useScrollLock(isCreateModalOpen);
 
   const rowOptions =
-    dashboardSideItems.find((item) => item.id === "suppliers")?.options || [];
+    dashboardSideItems.find(
+      (item) => item.id === DashboardCategoryEnum.RECEIPTS
+    )?.options || [];
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -45,13 +37,13 @@ export default function SupplierDashboard() {
   const fetchTableData = async (page: number = 1) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/suppliers?page=${page}&limit=${itemsPerPage}`
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/receipts?page=${page}&limit=${itemsPerPage}`
       );
       if (response.ok) {
         const { result, totalItems } = await response.json();
 
         setTotalPages(Math.ceil(totalItems / itemsPerPage));
-        setTableData(result as Supplier[]);
+        setTableData(result as ReceiptView[]);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -91,7 +83,6 @@ export default function SupplierDashboard() {
 
       toast.success("Data created successfully");
       setIsCreateModalOpen(false);
-      setEmptyData(createEmptySupplierDto());
       handleRefresh();
     } catch (error) {
       console.error("Failed to create data:", error);
@@ -137,7 +128,7 @@ export default function SupplierDashboard() {
       {isLoadingData ? (
         <LoadingTable />
       ) : (
-        <SupplierTable
+        <ReceptTable
           tableData={tableData}
           rowOptions={rowOptions}
           onRefresh={handleRefresh}
@@ -146,12 +137,10 @@ export default function SupplierDashboard() {
 
       {/* Modal thêm mới dữ liệu */}
       {isCreateModalOpen && (
-        <SupplierFormModal
-          mode={"create"}
+        <ReceiptCreateModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateSubmit}
-          data={emptyData}
         />
       )}
 

@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!isValidSession) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const redirectTo = encodeURIComponent(request.nextUrl.href);
+    return NextResponse.redirect(
+      new URL(`/login?redirectTo=${redirectTo}`, request.url)
+    );
   }
 
   let payload;
@@ -45,7 +48,10 @@ export async function middleware(request: NextRequest) {
     payload = await decrypt(token!);
   } catch (error) {
     console.error("Failed to decrypt token:", error);
-    return NextResponse.redirect(new URL("/login", request.url));
+    const redirectTo = encodeURIComponent(request.nextUrl.href);
+    return NextResponse.redirect(
+      new URL(`/login?redirectTo=${redirectTo}`, request.url)
+    );
   }
 
   // Check role for specific pages

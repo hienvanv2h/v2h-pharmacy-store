@@ -9,6 +9,7 @@ import RefreshIcon from "../../../public/images/refresh-cw-alt.svg";
 import CustomerTable from "./CustomerTable";
 import LoadingTable from "../LoadingTable";
 import Pagination from "@/components/ui/Pagination";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 const CustomerFormModal = dynamic(() => import("./CustomerFormModal"), {
   loading: () => <div>Loading modal...</div>,
@@ -32,6 +33,8 @@ export default function CustomerDashboard() {
   const [emptyData, setEmptyData] = useState<CustomerDTO>(
     createEmptyCustomerDto()
   );
+
+  useScrollLock(isCreateModalOpen);
 
   const rowOptions =
     dashboardSideItems.find((item) => item.id === "customers")?.options || [];

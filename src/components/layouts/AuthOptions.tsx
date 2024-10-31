@@ -38,7 +38,7 @@ export default function AuthOptions() {
         </div>
       ) : (
         <div className="flex gap-4 items-center">
-          <Link href={"/profile"} className="text-blue-600 hover:text-blue-800">
+          <Link href={"/me"} className="text-blue-600 hover:text-blue-800">
             <ProfileSVG className="w-6 h-6 inline" /> Tài khoản
           </Link>
           <div

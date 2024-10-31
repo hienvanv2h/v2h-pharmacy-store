@@ -13,7 +13,7 @@ export default function Dropdown({
   className,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState<string>("All");
+  const [selected, setSelected] = useState<string>(options[0]);
 
   const handleSelect = (value: string) => {
     setSelected(value);
@@ -53,13 +53,6 @@ export default function Dropdown({
       {isOpen && (
         <div className="absolute z-10 mt-2 w-full max-h-[320px] overflow-y-auto rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
           <div className="py-1" role="none">
-            <button
-              key="all"
-              onClick={() => handleSelect("All")}
-              className="block px-4 py-2 text-sm text-gray-700 w-full text-left hover:bg-gray-100"
-            >
-              All
-            </button>
             {options.map((value) => (
               <button
                 key={value}

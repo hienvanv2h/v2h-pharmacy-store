@@ -1,13 +1,12 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { toast } from "react-hot-toast";
 
 import { CartContextType, useCartContext } from "@/contexts/CartContext";
 import { MedicineView } from "@/types/medicine";
 import DefaultImage from "../../public/images/default.jpg";
 import Pagination from "../ui/Pagination";
-import NotificationOverlay from "../ui/NotificationOverlay";
 import { getValidatedImageSrc } from "@/utils/helpers";
 
 interface ProductListProps {
@@ -26,30 +25,27 @@ export default function ProductList({
   onPageChange,
 }: ProductListProps) {
   const { dispatch } = useCartContext() as CartContextType;
-  const [notification, setNotification] = useState("");
 
   // Calculate total number of pages
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const addProductToCart = (product: MedicineView) => {
+    // Check if product is out of stock
+    if (product.totalQuantity <= 0) {
+      toast("Sản phẩm đã hết hàng", {
+        icon: "⚠",
+      });
+      return;
+    }
     dispatch({
       type: "ADD_TO_CART",
       payload: { productUuid: product.uuid, quantity: 1 },
     });
-    setNotification("Thêm vào giỏ hàng thành công");
-  };
-
-  const handleCloseNotification = () => {
-    setNotification("");
+    toast.success("Thêm vào giỏ hàng thành công");
   };
 
   return (
-    <div>
-      <NotificationOverlay
-        message={notification}
-        onClose={handleCloseNotification}
-      />
-
+    <div className="relative">
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-10 lg:max-w-7xl lg:px-8">
         <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-10 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
           {products.map((product) => (
@@ -91,9 +87,13 @@ export default function ProductList({
                     {product.name}
                   </h4>
                 </Link>
-                <h5 className="mt-1 text-lg text-green-600 font-medium text-gray-900">
-                  {product.price} đ/{product.quantityUnit}
+                <h5 className="mt-1 text-lg text-green-600 font-medium">
+                  {Number(product.price).toLocaleString("vi-VN")} đ/
+                  {product.quantityUnit}
                 </h5>
+                <p className="mt-1 text-lg text-gray-500 font-medium">
+                  Available: {product.totalQuantity}
+                </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center items-center mt-2">
                   <button className="py-2 px-4 bg-green-500 text-white w-full sm:w-auto rounded-md">
                     Mua ngay

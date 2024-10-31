@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 import { MedicineView } from "@/types/medicine";
 import ReviewStars from "./ReviewStars";
 import { CartContextType, useCartContext } from "@/contexts/CartContext";
 import { getValidatedImageSrc } from "@/utils/helpers";
 import DefaultImage from "../../public/images/default.jpg";
-import NotificationOverlay from "./NotificationOverlay";
 
 interface ProductSliderProps {
   products: MedicineView[];
@@ -18,7 +18,6 @@ export default function ProductSlider({ products, label }: ProductSliderProps) {
   const { dispatch } = useCartContext() as CartContextType;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(4); // default items: 4
-  const [notification, setNotification] = useState("");
 
   const updateItemsToShow = () => {
     if (!window) return;
@@ -42,15 +41,18 @@ export default function ProductSlider({ products, label }: ProductSliderProps) {
   }, []);
 
   const addProductToCart = (product: MedicineView) => {
+    // Check if product is out of stock
+    if (product.totalQuantity <= 0) {
+      toast("Sản phẩm đã hết hàng", {
+        icon: "⚠",
+      });
+      return;
+    }
     dispatch({
       type: "ADD_TO_CART",
       payload: { productUuid: product.uuid, quantity: 1 },
     });
-    setNotification("Thêm vào giỏ hàng thành công");
-  };
-
-  const handleCloseNotification = () => {
-    setNotification("");
+    toast.success("Thêm vào giỏ hàng thành công");
   };
 
   const handlePrev = () => {
@@ -67,11 +69,6 @@ export default function ProductSlider({ products, label }: ProductSliderProps) {
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <NotificationOverlay
-        message={notification}
-        onClose={handleCloseNotification}
-      />
-
       <div className="flex justify-between mb-4">
         {label && <h2 className="text-xl font-bold mb-4">{label}</h2>}
         <Link
@@ -116,6 +113,9 @@ export default function ProductSlider({ products, label }: ProductSliderProps) {
                 </Link>
                 <p className="text-gray-600 mb-2">
                   {Number(product.price).toLocaleString("vi-VN")} đ
+                </p>
+                <p className="text-gray-600 mb-2">
+                  Available: {product.totalQuantity}
                 </p>
                 <div>
                   <button

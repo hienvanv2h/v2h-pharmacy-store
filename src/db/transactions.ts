@@ -9,6 +9,9 @@ import { MedicineImageDTO } from "@/types/medicines-image";
 import { MedicineBatchDTO } from "@/types/medicine-batch";
 import { ReceiptDTO } from "@/types/receipt";
 import { OrderDTO } from "@/types/order";
+import { UserCreateDTO } from "@/types/user";
+import { UserProfileDTO } from "@/types/user-profile";
+import { use } from "react";
 
 // MEDICINES & MEDICINE DETAILS TRANSACTIONS
 
@@ -67,15 +70,15 @@ export async function createMedicineAndDetailTransaction(
     }
 
     // Insert into medicine_images if thumbnail_url exists
-    if (medicineDto.thumbnailUrl) {
+    if (medicineDto.thumbnailUrl && medicineDto.thumbnailUrl.trim() !== "") {
       const medicineImageWithUUID: MedicineImageDTO = {
         medicineUuid: medicineUuid,
         imageUrl: medicineDto.thumbnailUrl,
       };
-      const medicineImageQuery = buildInsertQuery(
-        "medicine_images",
-        medicineImageWithUUID
-      );
+      const medicineImageQuery = `
+        INSERT INTO "public"."medicine_images" ("medicine_uuid", "image_url")
+        VALUES ($1, $2)
+      `;
       const medicineImageResult = await client.query(medicineImageQuery, [
         ...Object.values(medicineImageWithUUID),
       ]);
@@ -143,23 +146,35 @@ export async function updateMedicineAndDetailTransaction(
     }
 
     // Update or insert into medicine_images if thumbnail_url is provided
-    if (medicineDto.thumbnailUrl) {
-      const medicineImageWithUUID: MedicineImageDTO = {
-        medicineUuid: medicineUuid,
-        imageUrl: medicineDto.thumbnailUrl,
-      };
-
-      const medicineImageQuery = `
-        INSERT INTO "public"."medicine_images" ("medicine_uuid", "image_url")
-        VALUES ($1, $2)
+    if (medicineDto.thumbnailUrl && medicineDto.thumbnailUrl.trim() !== "") {
+      // Check existing image that has this url
+      const existingImageCheckQuery = `
+        SELECT * FROM "public"."medicine_images" WHERE "medicine_uuid" = $1 AND "image_url" = $2
       `;
+      const existingImageCheckResult = await client.query(
+        existingImageCheckQuery,
+        [medicineUuid, medicineDto.thumbnailUrl]
+      );
 
-      const medicineImageResult = await client.query(medicineImageQuery, [
-        ...Object.values(medicineImageWithUUID),
-      ]);
+      // Only insert if there is no existing image
+      if (existingImageCheckResult.rowCount === 0) {
+        const medicineImageWithUUID: MedicineImageDTO = {
+          medicineUuid: medicineUuid,
+          imageUrl: medicineDto.thumbnailUrl,
+        };
 
-      if (medicineImageResult.rowCount === 0) {
-        throw new Error("Failed to update or insert medicine image");
+        const medicineImageQuery = `
+          INSERT INTO "public"."medicine_images" ("medicine_uuid", "image_url")
+          VALUES ($1, $2)
+        `;
+
+        const medicineImageResult = await client.query(medicineImageQuery, [
+          ...Object.values(medicineImageWithUUID),
+        ]);
+
+        if (medicineImageResult.rowCount === 0) {
+          throw new Error("Failed to update or insert medicine image");
+        }
       }
     }
 
@@ -185,6 +200,8 @@ export async function createBatchAndReceiptTransaction(
 ): Promise<boolean> {
   const client = await pool.connect();
 
+  const quantity = receiptDto.quantity; // Use the quantity from receiptDto for both batch and receipt
+
   try {
     console.log(
       `Starting transaction for medicine batch and receipt creation...`
@@ -199,11 +216,11 @@ export async function createBatchAndReceiptTransaction(
       DO UPDATE SET quantity = medicine_batches.quantity + EXCLUDED.quantity, updated_at = CURRENT_TIMESTAMP
       RETURNING batch_id
     `;
-    const { expirationDate, quantity: batchQuantity } = batchDto;
+    const { expirationDate } = batchDto;
     const batchResult = await client.query(batchQuery, [
       medicineUuid,
       expirationDate,
-      batchQuantity,
+      quantity,
     ]);
 
     if (batchResult.rowCount === 0) {
@@ -218,16 +235,11 @@ export async function createBatchAndReceiptTransaction(
       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
       RETURNING receipt_id
     `;
-    const {
-      supplierId,
-      quantity: receiptQuantity,
-      price,
-      createdBy,
-    } = receiptDto;
+    const { supplierId, price, createdBy } = receiptDto;
     const receiptResult = await client.query(receiptQuery, [
       supplierId,
       batchId,
-      receiptQuantity,
+      quantity,
       price,
       createdBy,
     ]);
@@ -256,7 +268,8 @@ export async function createBatchAndReceiptTransaction(
 // ORDER & ORDER DETAILS
 export async function createOrderAndDetailTransaction(
   orderDto: Partial<OrderDTO>,
-  items: { medicineUuid: string; quantity: number }[]
+  items: { medicineUuid: string; quantity: number }[],
+  paymentMethod: string | null = null
 ) {
   const client = await pool.connect();
   try {
@@ -280,6 +293,7 @@ export async function createOrderAndDetailTransaction(
     }
 
     const orderUuid = orderResult.rows[0].uuid;
+    let totalAmount = 0;
 
     // 2. Check items exist
     for (const item of items) {
@@ -311,7 +325,9 @@ export async function createOrderAndDetailTransaction(
 
       const price = priceResult.rows[0].price;
 
-      // Create new order detail
+      totalAmount += price * quantity; // Calculate total amount
+
+      // 3. Create new order detail
       const insertOrderDetailQuery = `
         INSERT INTO order_details (order_uuid, medicine_uuid, medicine_batch_id, quantity, price)
         VALUES ($1, $2, $3, $4, $5)
@@ -328,7 +344,7 @@ export async function createOrderAndDetailTransaction(
         throw new Error("Failed to insert order detail");
       }
 
-      // Update batch quantity
+      // 4. Update batch quantity
       const updateBatchQuery = `
         UPDATE medicine_batches
         SET quantity = quantity - $1
@@ -344,9 +360,26 @@ export async function createOrderAndDetailTransaction(
       }
     }
 
+    // 5. Create new payment
+    if (paymentMethod) {
+      const insertPaymentQuery = `
+        INSERT INTO payments (order_uuid, payment_method, total_amount)
+        VALUES ($1, $2, $3)
+      `;
+      const paymentResult = await client.query(insertPaymentQuery, [
+        orderUuid,
+        paymentMethod || "Cash", // Default payment method
+        totalAmount,
+      ]);
+
+      if (paymentResult.rowCount === 0) {
+        throw new Error("Failed to insert payment");
+      }
+    }
+
     await client.query("COMMIT");
     console.log(
-      "Transaction completed successfully for order and order detail creation."
+      "Transaction completed successfully for order, order detail, and payment creation."
     );
     return true;
   } catch (error) {
@@ -358,60 +391,61 @@ export async function createOrderAndDetailTransaction(
   }
 }
 
-// Confirm an order
-// export async function confirmOrder(orderUuid: string) {
-//   const client = await pool.connect();
-//   try {
-//     await client.query("BEGIN"); // Bắt đầu transaction
+// USER & USER PROFILE
+export async function createUserAndProfileTransaction(
+  userDto: UserCreateDTO,
+  userProfileDto: Partial<UserProfileDTO>
+) {
+  const client = await pool.connect();
+  try {
+    console.log("Starting transaction for user and user profile creation...");
+    await client.query("BEGIN");
 
-//     // 1. Update order status to 'Confirmed'
-//     const updateOrderQuery = `
-//       UPDATE orders
-//       SET status = 'Confirmed', updated_at = CURRENT_TIMESTAMP
-//       WHERE uuid = $1
-//     `;
-//     await client.query(updateOrderQuery, [orderUuid]);
+    // 1. Create new user
+    const insertUserQuery = `
+      INSERT INTO users (username, password)
+      VALUES ($1, $2)
+      RETURNING uuid
+    `;
+    const { username, password } = userDto;
+    const insertUserResult = await client.query(insertUserQuery, [
+      username,
+      password,
+    ]);
 
-//     // 2. Lấy chi tiết đơn hàng từ bảng order_details để cập nhật các medicine_batches
-//     const getOrderDetailsQuery = `
-//       SELECT medicine_batch_id, quantity
-//       FROM order_details
-//       WHERE order_uuid = $1
-//     `;
-//     const orderDetails = await client.query(getOrderDetailsQuery, [orderUuid]);
+    if (insertUserResult.rowCount === 0) {
+      throw new Error("Failed to insert user");
+    }
 
-//     // 3. Cập nhật số lượng trong bảng medicine_batches
-//     const updateBatchQuery = `
-//       UPDATE medicine_batches
-//       SET quantity = quantity - $1, updated_at = CURRENT_TIMESTAMP
-//       WHERE batch_id = $2 AND quantity >= $1
-//     `;
+    const userUuid = insertUserResult.rows[0].uuid;
 
-//     for (const detail of orderDetails.rows) {
-//       const { medicine_batch_id, quantity } = detail;
+    // 2. Create new user profile
+    const insertUserProfileQuery = `
+      INSERT INTO user_profiles (user_uuid, full_name, address, phone_number)
+      VALUES ($1, $2, $3, $4)
+    `;
+    const { fullName, address, phoneNumber } = userProfileDto;
+    const insertUserProfileResult = await client.query(insertUserProfileQuery, [
+      userUuid,
+      fullName,
+      address,
+      phoneNumber,
+    ]);
 
-//       const result = await client.query(updateBatchQuery, [
-//         quantity,
-//         medicine_batch_id,
-//       ]);
+    if (insertUserProfileResult.rowCount === 0) {
+      throw new Error("Failed to insert user profile");
+    }
 
-//       // Kiểm tra nếu không có batch nào được cập nhật (không đủ số lượng)
-//       if (result.rowCount === 0) {
-//         throw new Error(`Insufficient quantity in batch ${medicine_batch_id}`);
-//       }
-//     }
-
-//     // Commit transaction nếu mọi thứ thành công
-//     await client.query("COMMIT");
-//     return { success: true, message: "Order confirmed successfully" };
-//   } catch (err: any) {
-//     await client.query("ROLLBACK"); // Rollback nếu có lỗi
-//     console.error("Transaction failed, rolling back changes:", err);
-//     return {
-//       success: false,
-//       message: `Failed to confirm order: ${err.message}`,
-//     };
-//   } finally {
-//     client.release(); // Giải phóng client
-//   }
-// }
+    await client.query("COMMIT");
+    console.log(
+      "Transaction completed successfully for user and user profile creation."
+    );
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Transaction failed:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

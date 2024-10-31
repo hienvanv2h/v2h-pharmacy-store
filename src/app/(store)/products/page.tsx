@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ProductsFilterWrapper } from "@/components/wrappers/ProductsFilterWrapper";
 import { ProductListWrapper } from "@/components/wrappers/ProductListWrapper";
 import ErrorBoundary from "@/components/errors/ErrorBoundary";
+import ReactHotToast from "@/components/ui/ReactHotToast";
 
 export const revalidate = 10;
 
@@ -16,6 +17,8 @@ export default async function ProductsPage({
 }) {
   return (
     <div className="flex flex-col justify-between gap-8">
+      <ReactHotToast />
+
       <ErrorBoundary fallback={<div>Error loading filters</div>}>
         <Suspense fallback={<ProductsFilterLoading />}>
           <ProductsFilterWrapper />

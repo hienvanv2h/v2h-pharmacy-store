@@ -4,13 +4,15 @@ import SearchIcon from "../../public/images/search-alt.svg";
 
 // TODO: Implement fetch logic
 export default function SearchBar({
+  initValue,
   placeholder,
   onSearch,
 }: {
+  initValue?: string;
   placeholder?: string;
   onSearch: (value: string) => void;
 }) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initValue || "");
 
   const handleSearch = () => {
     onSearch(searchTerm);

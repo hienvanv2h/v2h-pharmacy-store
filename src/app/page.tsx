@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import ErrorBoundary from "@/components/errors/ErrorBoundary";
 import { ProductSliderWrapper } from "@/components/wrappers/ProductSliderWrapper";
 import Articles from "@/components/layouts/Articles";
+import ReactHotToast from "@/components/ui/ReactHotToast";
 
 export const revalidate = 10;
 
@@ -31,6 +32,8 @@ export default async function Home({
 
   return (
     <div className="flex flex-col gap-4 my-8 mx-8">
+      <ReactHotToast />
+
       <ErrorBoundary fallback={<div>Error fetching products</div>}>
         {productSliders.map((productSlider, index) => (
           <div key={index}>

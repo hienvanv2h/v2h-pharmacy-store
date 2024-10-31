@@ -2,11 +2,13 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 import Navbar from "./Navbar";
 import SearchBar from "../ui/SearchBar";
 import AuthOptions from "./AuthOptions";
 import { CartContextType, useCartContext } from "@/contexts/CartContext";
+import { useProductFilter } from "@/contexts/FilterContext";
 
 const ShoppingCart = dynamic(() => import("../ui/ShoppingCart"), {
   loading: () => <div>Loading Cart...</div>,
@@ -17,6 +19,10 @@ export default function Header() {
   const [isVisible, setIsVisible] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { state } = useCartContext() as CartContextType;
+  const { setFilters } = useProductFilter();
+
+  const router = useRouter();
+
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -48,7 +54,10 @@ export default function Header() {
   };
 
   // TODO: implement search
-  // const onSearch = () => {};
+  const handleSearch = (searchTerm: string) => {
+    setFilters((prev) => ({ ...prev, page: 1, keyword: searchTerm }));
+    router.push("/products");
+  };
 
   return (
     <>
@@ -64,7 +73,7 @@ export default function Header() {
                 V2H Pharmacy Store
               </h1>
             </Link>
-            <SearchBar onSearch={() => {}} />
+            <SearchBar onSearch={handleSearch} />
           </div>
 
           <div className="lg:hidden my-4 border-t border-gray-300"></div>

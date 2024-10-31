@@ -9,7 +9,15 @@ type OrderDetail = {
   updatedAt: Date;
 };
 
-export type OrderDetailView = OrderDetail & {
+export type OrderDetailView = {
+  orderDetailId: number;
+  orderUuid: string;
+  medicineName: string;
+  medicineBatchId: string;
+  quantity: number;
+  price: number;
+  createdAt: Date;
+  updatedAt: Date;
   quantityUnit: string;
   expirationDate: Date;
 };

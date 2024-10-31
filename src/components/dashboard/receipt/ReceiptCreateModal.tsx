@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
-import { OrderDTO } from "@/types/order";
+import { MedicineBatchDTO } from "@/types/medicine-batch";
+import { ReceiptDTO } from "@/types/receipt";
 import { MedicineDetailView } from "@/types/medicine-detail";
+import { useProductFilter } from "@/contexts/FilterContext";
 import {
   getAllMedicinesBrandName,
   getAllProductCategories,
@@ -11,43 +13,46 @@ import {
 } from "@/lib/api";
 import ProductsFilter from "@/components/products/ProductsFilter";
 import Pagination from "@/components/ui/Pagination";
-import { useProductFilter } from "@/contexts/FilterContext";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import SupplierSelectBox from "./SupplierSelectBox";
 
-interface OrderCreateModalProps {
+interface ReceiptCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>, data: any) => void;
 }
 
-type ItemType = {
-  medicineUuid: string;
-  name: string;
-  quantity: number;
+type FormDataType = {
+  medicineBatchDto: Partial<MedicineBatchDTO>;
+  receiptDto: Partial<ReceiptDTO>;
 };
 
-export default function OrderCreateModal({
+export default function ReceiptCreateModal({
   isOpen,
   onClose,
   onSubmit,
-}: OrderCreateModalProps) {
+}: ReceiptCreateModalProps) {
   const { filters, setFilters } = useProductFilter();
 
-  const [formData, setFormData] = useState<{
-    orderDto: OrderDTO;
-    items: ItemType[];
-  }>({
-    orderDto: {
-      customerId: 1,
-      status: "Pending",
+  const [formData, setFormData] = useState<FormDataType>({
+    medicineBatchDto: {
+      medicineUuid: "",
+      expirationDate: new Date(),
     },
-    items: [],
+    receiptDto: {
+      supplierId: null,
+      quantity: 0,
+      price: 0,
+      createdBy: "",
+    },
   });
 
   const [medicinesViews, setMedicineViews] = useState<MedicineDetailView[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [brandNames, setBrandNames] = useState<string[]>([]);
 
-  const [selectedItems, setSelectedItems] = useState<ItemType[]>([]);
+  const [selectedMedicine, setSelectedMedicine] =
+    useState<MedicineDetailView | null>(null);
 
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
@@ -101,44 +106,47 @@ export default function OrderCreateModal({
     fetchMedicineDetailViews();
   }, [filters]);
 
-  const handleItemSelect = (medicineView: MedicineDetailView) => {
-    // Check if item is out of stock
-    if (medicineView.totalQuantity <= 0) {
-      toast("Sản phẩm đã hết hàng", {
-        icon: "⚠",
-      });
-      return;
-    }
-
-    setSelectedItems((prev) => {
-      const existingItem = prev.find(
-        (item) => item.medicineUuid === medicineView.uuid
-      );
-
-      const updatedItems = existingItem
-        ? prev.filter((item) => item.medicineUuid !== medicineView.uuid)
-        : [
-            ...prev,
-            {
-              medicineUuid: medicineView.uuid,
-              name: medicineView.name,
-              quantity: 1,
-            },
-          ];
-      setFormData((prev) => ({ ...prev, items: updatedItems }));
-      return updatedItems;
-    });
+  const handleMedicineRowSelect = (medicineView: MedicineDetailView) => {
+    setSelectedMedicine(medicineView);
+    setFormData((prev) => ({
+      ...prev,
+      medicineBatchDto: {
+        ...prev.medicineBatchDto,
+        medicineUuid: medicineView.uuid,
+      },
+    }));
   };
 
-  const handleQuantityChange = (medicineUuid: string, quantity: number) => {
-    setSelectedItems((prev) => {
-      const updatedItems = prev.map((item) =>
-        item.medicineUuid === medicineUuid ? { ...item, quantity } : item
-      );
+  const handleQuantityChange = (value: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      receiptDto: { ...prev.receiptDto, quantity: value },
+    }));
+  };
 
-      setFormData((prev) => ({ ...prev, items: updatedItems }));
-      return updatedItems;
-    });
+  const handleExpirationDateChange = (date: Date) => {
+    setFormData((prev) => ({
+      ...prev,
+      medicineBatchDto: { ...prev.medicineBatchDto, expirationDate: date },
+    }));
+  };
+
+  const handlePriceChange = (value: string) => {
+    let parsedValue = parseInt(value);
+    if (isNaN(parsedValue) || parsedValue < 0) {
+      parsedValue = 0;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      receiptDto: { ...prev.receiptDto, price: parsedValue },
+    }));
+  };
+
+  const handleSupplierSelect = (supplierId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      receiptDto: { ...prev.receiptDto, supplierId: supplierId },
+    }));
   };
 
   const handlePageChange = (page: number) => {
@@ -147,7 +155,8 @@ export default function OrderCreateModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSubmit(event, formData);
+    console.log(formData);
+    // onSubmit(event, formData);
   };
 
   if (!isOpen) return null;
@@ -156,7 +165,7 @@ export default function OrderCreateModal({
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
       <div className="bg-white p-6 rounded-lg shadow-lg max-w-7xl w-full mx-4 md:mx-auto my-auto overflow-y-auto h-[90vh]">
         <div className="relative mb-6">
-          <h2 className="text-xl font-bold mb-4">Create New Order</h2>
+          <h2 className="text-xl font-bold mb-4">Create New Receipt</h2>
           <button
             type="button"
             onClick={onClose}
@@ -177,20 +186,16 @@ export default function OrderCreateModal({
               <h3 className="text-lg font-semibold mb-4">Medicine List</h3>
 
               {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                </div>
+                <LoadingSpinner />
               ) : (
                 <div className="space-y-4">
                   {medicinesViews.length > 0 ? (
                     medicinesViews.map((medicine) => (
                       <div
                         key={medicine.uuid}
-                        onClick={() => handleItemSelect(medicine)}
+                        onClick={() => handleMedicineRowSelect(medicine)}
                         className={`flex justify-between items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors duration-200 ${
-                          selectedItems.some(
-                            (item) => item.medicineUuid === medicine.uuid
-                          )
+                          selectedMedicine?.uuid === medicine.uuid
                             ? "bg-gray-100"
                             : ""
                         }`}
@@ -231,37 +236,65 @@ export default function OrderCreateModal({
 
           {/* Order Form Section */}
           <div className="bg-white p-4 border border-gray-200 rounded-lg">
-            <h3 className="text-lg font-semibold mb-4">Order Form</h3>
+            <h3 className="text-lg font-semibold mb-4">Receipt Form</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="border border-gray-200 rounded-lg p-4">
                 <h4 className="font-medium mb-3">Selected Items:</h4>
-                <div className="space-y-3">
-                  {selectedItems.map((item) => (
-                    <div
-                      key={item.medicineUuid}
-                      className="flex items-center gap-3 p-2 bg-gray-100 rounded-lg"
-                    >
-                      <span className="flex-grow text-sm">{item.name}</span>
+
+                {selectedMedicine ? (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      {selectedMedicine.name}
+                    </h3>
+
+                    <div className="flex items-center gap-3 p-2 bg-gray-100 rounded-lg">
+                      <span className="flex-grow text-sm">Số lượng:</span>
                       <input
                         type="number"
                         min="1"
-                        value={item.quantity}
+                        value={formData.receiptDto.quantity}
                         onChange={(e) =>
-                          handleQuantityChange(
-                            item.medicineUuid,
-                            parseInt(e.target.value)
-                          )
+                          handleQuantityChange(parseInt(e.target.value || "0"))
                         }
                         className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
                     </div>
-                  ))}
-                  {selectedItems.length === 0 && (
-                    <p className="text-gray-500 text-sm italic">
-                      No items selected
-                    </p>
-                  )}
-                </div>
+
+                    <div className="flex flex-wrap items-center gap-3 p-2 bg-gray-100 rounded-lg">
+                      <span className="flex-grow text-sm">Hạn sử dụng:</span>
+                      <input
+                        type="date"
+                        value={
+                          formData.medicineBatchDto?.expirationDate
+                            ? formData.medicineBatchDto?.expirationDate
+                                ?.toISOString()
+                                .split("T")[0]
+                            : ""
+                        }
+                        onChange={(e) =>
+                          handleExpirationDateChange(new Date(e.target.value))
+                        }
+                        className="w-40 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 p-2 bg-gray-100 rounded-lg">
+                      <span className="flex-grow text-sm">Tổng tiền:</span>
+                      <input
+                        type="number"
+                        value={formData.receiptDto.price}
+                        onChange={(e) => handlePriceChange(e.target.value)}
+                        className="w-40 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm italic">
+                    No items selected
+                  </p>
+                )}
+
+                <SupplierSelectBox onSelect={handleSupplierSelect} />
               </div>
 
               <div className="flex justify-end gap-2 mt-4">

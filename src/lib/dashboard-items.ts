@@ -33,6 +33,6 @@ export const dashboardSideItems: DashboardCategory[] = [
   {
     id: DashboardCategoryEnum.RECEIPTS,
     title: "Tra cứu biên lai nhập hàng",
-    options: [],
+    options: ["CREATE", "UPDATE"],
   },
 ];

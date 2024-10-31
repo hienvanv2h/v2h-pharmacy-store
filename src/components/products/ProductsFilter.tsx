@@ -11,12 +11,14 @@ export default function ProductsFilter({
   categories: string[];
   brandNames: string[];
 }) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([
-    "All",
-  ]);
-  const [selectedBrandName, setSelectedBrandName] = useState<string>("All");
-
   const { filters, setFilters } = useProductFilter();
+
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    filters.categories || ["All"]
+  );
+  const [selectedBrandName, setSelectedBrandName] = useState<string>(
+    filters.brandName || "All"
+  );
 
   const handleCategoryChange = (value: string) => {
     // Update the filter state
@@ -83,7 +85,10 @@ export default function ProductsFilter({
       <div className="w-full">
         <div className="flex flex-wrap flex-col md:flex-row justify-start gap-4">
           <h1 className="text-2xl font-bold">Categories</h1>
-          <Dropdown options={categories} onSelect={handleCategoryChange} />
+          <Dropdown
+            options={["All", ...categories]}
+            onSelect={handleCategoryChange}
+          />
         </div>
 
         {/* Selected categories */}
@@ -102,12 +107,16 @@ export default function ProductsFilter({
       <div className="flex flex-col gap-4 w-full">
         <div className="flex flex-wrap flex-col sm:flex-row justify-start gap-4">
           <h1 className="text-2xl font-bold">Brand Name</h1>
-          <Dropdown options={brandNames} onSelect={handleBrandNameChange} />
+          <Dropdown
+            options={["All", ...brandNames]}
+            onSelect={handleBrandNameChange}
+          />
         </div>
 
         <div className="self-start w-full flex flex-row justify-start gap-4">
           <h1 className="text-2xl font-bold">Name</h1>
           <SearchBar
+            initValue={filters.keyword || ""}
             placeholder="Search..."
             onSearch={handleSearchInputChange}
           />

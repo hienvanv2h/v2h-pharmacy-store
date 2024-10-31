@@ -9,6 +9,7 @@ import RefreshIcon from "../../../public/images/refresh-cw-alt.svg";
 import MedicineTable from "./MedicineTable";
 import LoadingTable from "../LoadingTable";
 import Pagination from "@/components/ui/Pagination";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 const MedicineFormModal = dynamic(() => import("./MedicineFormModal"), {
   loading: () => <div>Loading modal...</div>,
@@ -35,6 +36,8 @@ export default function MedicineDashboard() {
   const [emptyData, setEmptyData] = useState<MedicineDTO>(
     createEmptyMedicineDto()
   );
+
+  useScrollLock(isCreateModalOpen);
 
   const rowOptions =
     dashboardSideItems.find((item) => item.id === "medicines")?.options || [];

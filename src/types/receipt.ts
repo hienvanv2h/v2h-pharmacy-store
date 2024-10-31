@@ -20,15 +20,6 @@ export type ReceiptDTO = Omit<
 >;
 
 // Type guard(s)
-export function isReceipt(data: any): data is Receipt {
-  return (
-    data !== null &&
-    typeof data === "object" &&
-    "receiptId" in data &&
-    typeof data.receiptId === "number"
-  );
-}
-
 export function isReceiptView(data: any): data is ReceiptView {
   return (
     data !== null &&

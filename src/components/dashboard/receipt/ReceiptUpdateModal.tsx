@@ -1,54 +1,48 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import toast from "react-hot-toast";
 
-import { OrderDTO, OrderSummaryView } from "@/types/order";
+import { ReceiptDTO, ReceiptView } from "@/types/receipt";
 import Dropdown from "@/components/ui/Dropdown";
 
-interface OrderUpdateModalProps {
+interface ReceiptUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>, data: any) => void;
-  data?: OrderSummaryView;
+  data?: ReceiptView;
 }
 
-export default function OrderUpdateModal({
+export default function ReceiptUpdateModal({
   isOpen,
   onClose,
   onSubmit,
   data,
-}: OrderUpdateModalProps) {
+}: ReceiptUpdateModalProps) {
   const filteredData = useMemo(() => {
-    if (!data) return null;
+    if (!data) return {};
 
-    const updateDto: Partial<OrderDTO> = {
-      status: data.status,
+    const updateDto: Partial<ReceiptDTO> = {
+      supplierId: data.supplierId,
+      quantity: data.quantity,
+      price: data.price,
     };
     return updateDto;
   }, [data]);
 
-  const [formData, setFormData] = useState<Partial<OrderDTO> | null>(
-    filteredData
-  );
-
-  const [selectedStatus, setSelectedStatus] = useState<string>(
-    data?.status || "Pending"
-  );
-  const statusList = ["Pending", "Confirm", "Delivered", "Cancel"];
+  const [formData, setFormData] = useState<Partial<ReceiptDTO>>(filteredData);
 
   useEffect(() => {
     setFormData(filteredData);
   }, [filteredData]);
 
-  const handleInputChange = (key: string, value: any) => {
+  const handleInputChange = (key: string, value: string | number) => {
     setFormData((prev: any) => ({
       ...prev,
-      [key]: value,
+      [key]:
+        typeof value === "string" && !isNaN(Number(value))
+          ? Number(value)
+          : value,
     }));
-  };
-
-  const handleStatusChange = (key: string, value: string) => {
-    setSelectedStatus(value);
-    handleInputChange(key, value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -62,7 +56,7 @@ export default function OrderUpdateModal({
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
       <div className="bg-white p-6 rounded-lg shadow-lg max-w-xl w-full mx-4 md:mx-auto my-auto overflow-y-auto min-h-[40vh] max-h-[90vh]">
         <div className="relative">
-          <h2 className="text-xl font-bold mb-4">Update Order</h2>
+          <h2 className="text-xl font-bold mb-4">Update Receipt</h2>
           <button
             type="button"
             onClick={onClose}
@@ -79,28 +73,13 @@ export default function OrderUpdateModal({
                   {key}
                 </label>
 
-                {key === "status" ? (
-                  <div className="mb-2">
-                    <Dropdown
-                      options={statusList}
-                      onSelect={(value) => handleStatusChange(key, value)}
-                    />
-
-                    <input
-                      type="text"
-                      value={selectedStatus}
-                      readOnly
-                      className="w-full mt-2 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300"
-                    />
-                  </div>
-                ) : (
-                  <input
-                    type={typeof value === "number" ? "number" : "text"}
-                    value={typeof value === "number" ? value ?? 0 : value ?? ""}
-                    onChange={(e) => handleInputChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300"
-                  />
-                )}
+                <input
+                  min={0}
+                  type={typeof value === "number" ? "number" : "text"}
+                  value={typeof value === "number" ? value ?? 0 : value ?? ""}
+                  onChange={(e) => handleInputChange(key, e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300"
+                />
               </div>
             ))}
 

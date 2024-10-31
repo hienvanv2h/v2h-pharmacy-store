@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
 export default function FormLogin() {
@@ -8,7 +8,12 @@ export default function FormLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get redirect URL from query parameters, fallback to '/products' if not exists
+  const redirectUrl = searchParams.get("redirectTo") || "/products";
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,7 +30,7 @@ export default function FormLogin() {
         if (userResponse.ok) {
           const userData = await userResponse.json();
           setUser(userData.user);
-          router.push("/products");
+          router.push(redirectUrl);
         } else {
           throw new Error("Failed to fetch user");
         }

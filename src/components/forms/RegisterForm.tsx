@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 export default function RegisterForm() {
-  const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [address, setAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState(""); // email = username
@@ -23,7 +23,7 @@ export default function RegisterForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
+          fullName,
           address,
           phoneNumber,
           username: email,
@@ -62,7 +62,7 @@ export default function RegisterForm() {
 
   const isDisableSubmit = () => {
     return (
-      name === "" ||
+      fullName === "" ||
       address === "" ||
       phoneNumber === "" ||
       email === "" ||
@@ -107,8 +107,8 @@ export default function RegisterForm() {
                   name="name"
                   type="text"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6 p-4"
                 />
               </div>
@@ -233,9 +233,11 @@ export default function RegisterForm() {
                   onChange={(e) => setRetypePassword(e.target.value)}
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6 p-4"
                 />
-                {isPasswordTouched && !isPasswordMatch() && (
-                  <div className="text-red-500 mt-2">Mật khẩu không khớp</div>
-                )}
+                <div className="text-red-500 mt-2 h-5">
+                  {isPasswordTouched &&
+                    !isPasswordMatch() &&
+                    "Mật khẩu không khớp"}
+                </div>
               </div>
             </div>
 

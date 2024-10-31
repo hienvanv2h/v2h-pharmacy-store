@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Toaster } from "react-hot-toast";
 
 import { dashboardSideItems } from "@/lib/dashboard-items";
+import ReactHotToast from "../ui/ReactHotToast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -40,12 +40,7 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="relative flex-1 px-10 py-8 overflow-x-hidden min-h-full">
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{ duration: 5000 }}
-          containerStyle={{ position: "absolute" }}
-        />
+        <ReactHotToast duration={5000} />
 
         <h2 className="text-3xl font-semibold text-gray-800 mb-6">{title}</h2>
 

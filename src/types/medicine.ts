@@ -12,7 +12,9 @@ type Medicine = {
   updatedAt: Date;
 };
 
-export type MedicineView = Omit<Medicine, "medicineId">;
+export type MedicineView = Omit<Medicine, "medicineId"> & {
+  totalQuantity: number;
+};
 
 export type MedicineDTO = Omit<
   Medicine,

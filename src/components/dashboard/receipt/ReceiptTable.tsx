@@ -2,43 +2,38 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { MedicineView } from "@/types/medicine";
+import { ReceiptView } from "@/types/receipt";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import DeleteModal from "../DeleteModal";
 import toast from "react-hot-toast";
 
-const MedicineFormModal = dynamic(() => import("./MedicineFormModal"), {
+const ReceiptUpdateModal = dynamic(() => import("./ReceiptUpdateModal"), {
   loading: () => <div>Loading modal...</div>,
   ssr: false,
 });
 
-interface MedicineTableProps {
-  tableData: MedicineView[];
+interface ReceiptTableProps {
+  tableData: ReceiptView[];
   rowOptions?: string[];
   onRefresh: () => void;
 }
 
-export default function MedicineTable({
+export default function ReceptTable({
   tableData,
   rowOptions = [],
   onRefresh,
-}: MedicineTableProps) {
-  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
+}: ReceiptTableProps) {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Lock scroll when any modal is open
-  useScrollLock(isTagsModalOpen || isUpdateModalOpen || isDeleteModalOpen);
+  useScrollLock(isUpdateModalOpen || isDeleteModalOpen);
 
   const [modalData, setModalData] = useState<any>(null);
   const [isSelectedRow, setIsSelectedRow] = useState<any>(null);
 
-  const openTagsModal = (tagsJsonArr: any[]) => {
-    setModalData(tagsJsonArr);
-    setIsTagsModalOpen(true);
-  };
-
   const openUpdateModal = (rowData: any) => {
+    console.log(rowData);
     setModalData(rowData); // store the row data
     setIsUpdateModalOpen(true);
   };
@@ -49,7 +44,6 @@ export default function MedicineTable({
   };
 
   const closeModals = () => {
-    setIsTagsModalOpen(false);
     setIsUpdateModalOpen(false);
     setIsDeleteModalOpen(false);
     setModalData(null);
@@ -65,20 +59,14 @@ export default function MedicineTable({
     const toastId = toast.loading("Updating data...");
 
     try {
-      // Remap the data to match the API
-      const mappedData = {
-        medicineDto: data.medicineData,
-        medicineDetailDto: data.medicineDetailData,
-      };
-
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/medicines/${identifier}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/receipts/${identifier}`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(mappedData),
+          body: JSON.stringify(data),
         }
       );
 
@@ -98,21 +86,13 @@ export default function MedicineTable({
     }
   };
 
-  const handleSubmitTest = async (
-    event: React.FormEvent<HTMLFormElement>,
-    data: any
-  ) => {
-    event.preventDefault();
-    console.log(data);
-  };
-
   const handleDeleteConfirm = async () => {
     const identifier = modalData["uuid"];
     const toastId = toast.loading("Deleting data...");
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/medicines/${identifier}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/receipts/${identifier}`,
         {
           method: "DELETE",
         }
@@ -173,17 +153,7 @@ export default function MedicineTable({
                   key={`${index}-${column}`}
                   className="border border-slate-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-[400px] truncate"
                 >
-                  {/* Kiểm tra nếu giá trị cột là kiểu JSON thì hiển thị button để xem chi tiết trong modal */}
-                  {column === "tags" ? (
-                    <button
-                      onClick={() => openTagsModal((row as any)[column])}
-                      className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-2 py-1 text-center hover:underline"
-                    >
-                      Xem chi tiết
-                    </button>
-                  ) : (
-                    (row as any)[column]
-                  )}
+                  {(row as any)[column]}
                 </td>
               ))}
 
@@ -215,29 +185,6 @@ export default function MedicineTable({
         </tbody>
       </table>
 
-      {/* Modal show tags */}
-      {isTagsModalOpen && modalData && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
-            <h2 className="text-2xl font-bold mb-4">Tags Info</h2>
-            <div className="space-y-4">
-              <div className="flex flex-col">
-                <span className="font-bold text-gray-700">Data:</span>
-                <span className="text-gray-600">
-                  {JSON.stringify(modalData)}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={closeModals}
-              className="bg-blue-500 text-white px-4 py-2 rounded mt-4"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Modal xác nhận xóa dữ liệu */}
       {isDeleteModalOpen && modalData && (
         <DeleteModal
@@ -249,8 +196,7 @@ export default function MedicineTable({
 
       {/* Modal cập nhật dữ liệu */}
       {isUpdateModalOpen && modalData && (
-        <MedicineFormModal
-          mode={"update"}
+        <ReceiptUpdateModal
           isOpen={isUpdateModalOpen}
           onClose={closeModals}
           onSubmit={handleUpdateSubmit}

@@ -18,6 +18,7 @@ import { UserCreateDTO, UserUpdateDTO } from "@/types/user";
 import { SessionCreateDTO, SessionUpdateDTO } from "@/types/session";
 import { MedicineDetailDTO } from "@/types/medicine-detail";
 import { deprecate } from "util";
+import { UserProfileDTO } from "@/types/user-profile";
 
 // MEDICINES QUERIES
 
@@ -258,7 +259,7 @@ export async function createMedicineImage(
 }
 
 export async function getMedicinesImagesByMedicinesUuid(medicineUuid: string) {
-  const query = `SELECT * FROM "public"."medicine_images" WHERE "medicine_uuid" = $1`;
+  const query = `SELECT * FROM "public"."medicine_images" WHERE "medicine_uuid" = $1 ORDER BY "updated_at" DESC`;
   try {
     const result = await pool.query(query, [medicineUuid]);
     return result.rows;
@@ -525,6 +526,22 @@ export async function getCustomerByPhoneNumber(phoneNumber: string) {
   }
 }
 
+export async function getCustomerByEmailAndPhoneNumber(
+  email: string,
+  phoneNumber: string
+) {
+  const query = `SELECT * FROM "public"."customers" 
+    WHERE ($1::VARCHAR IS NULL OR $1::VARCHAR = '' OR "email" = $1) 
+    AND ($2::VARCHAR IS NULL OR $2::VARCHAR = '' OR "phone_number" = $2)`;
+  try {
+    const result = await pool.query(query, [email, phoneNumber]);
+    return result.rows[0];
+  } catch (err: any) {
+    console.error("Database error:", err);
+    throw err;
+  }
+}
+
 export async function updateCustomerById(
   id: number,
   customerDto: Partial<CustomerDTO>
@@ -747,18 +764,8 @@ export async function getPaymentByOrderUuid(orderUuid: string) {
 }
 
 // USERS QUERIES
-export async function createUser(
-  userDto: UserCreateDTO
-): Promise<boolean | null> {
-  const query = buildInsertQuery("users", userDto);
-  try {
-    const result = await pool.query(query, [...Object.values(userDto)]);
-    return result.rowCount > 0;
-  } catch (err: any) {
-    console.error("Database error:", err);
-    throw err;
-  }
-}
+
+// Create both user and user profile in transaction (check transactions.ts)
 
 export async function getUserByUserUuid(uuid: string) {
   const query = `SELECT * FROM "public"."vw_users_with_uuid" WHERE "uuid" = $1`;
@@ -789,6 +796,37 @@ export async function updateUserByUserUuid(
   const query = buildUpdateQuery("users", userDto);
   try {
     const result = await pool.query(query, [...Object.values(userDto), uuid]);
+    return result.rowCount > 0;
+  } catch (err: any) {
+    console.error("Database error:", err);
+    throw err;
+  }
+}
+
+// USER PROFILE QUERIES
+export async function getUserProfileViewByUserUuid(userUuid: string) {
+  const query = `SELECT * FROM "public"."vw_user_profiles_view" WHERE "user_uuid" = $1`;
+  try {
+    const result = await pool.query(query, [userUuid]);
+    return result.rows[0];
+  } catch (err: any) {
+    console.error("Database error:", err);
+    throw err;
+  }
+}
+
+export async function updateUserProfileByUserUuid(
+  userUuid: string,
+  userProfileDto: Partial<UserProfileDTO>
+): Promise<boolean | null> {
+  const query = buildUpdateQuery("user_profiles", userProfileDto, {
+    findBy: "user_uuid",
+  });
+  try {
+    const result = await pool.query(query, [
+      ...Object.values(userProfileDto),
+      userUuid,
+    ]);
     return result.rowCount > 0;
   } catch (err: any) {
     console.error("Database error:", err);

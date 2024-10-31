@@ -9,11 +9,19 @@ import {
 } from "@/lib/auth";
 import { formatError } from "@/utils/error-handlers";
 import { TokenPayload } from "@/types/token-payload";
+import { UserView } from "@/types/user";
 
 export async function POST(request: NextRequest) {
   const { username, password } = await request.json();
   try {
     const user = await getUserByUsername(username);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Username not found" },
+        { status: 404 }
+      );
+    }
+
     const isValidPassword = await comparePasswords(password, user.password);
     if (!user || !isValidPassword) {
       return NextResponse.json(

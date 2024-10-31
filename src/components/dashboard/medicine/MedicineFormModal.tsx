@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { MedicineDTO, MedicineView, isMedicineView } from "@/types/medicine";
 import Dropdown from "@/components/ui/Dropdown";
 import { isMedicineDetail } from "@/types/medicine-detail";
+import ImageUpload from "@/components/forms/ImageUpload";
 
 interface MedicineFormModalProps {
   mode: "create" | "update";
@@ -25,8 +26,16 @@ export default function MedicineFormModal({
   const filteredData = useMemo(() => {
     if (!data) return {};
     if (isMedicineView(data)) {
-      const { uuid, createdAt, updatedAt, ...rest } = data;
-      return rest;
+      const medicineDto: MedicineDTO = {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        price: data.price,
+        quantityUnit: data.quantityUnit,
+        tags: data.tags,
+        thumbnailUrl: data.thumbnailUrl || null,
+      };
+      return medicineDto;
     }
 
     return data;
@@ -41,7 +50,11 @@ export default function MedicineFormModal({
   });
 
   const [showMedicineDetail, setShowMedicineDetail] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    formData.medicineData.tags || []
+  );
+  const [selectedImageName, setSelectedImageName] = useState<string>("");
+
   const tagsList = ["new", "sale", "popular"]; // Hardcoded for now
 
   useEffect(() => {
@@ -93,14 +106,9 @@ export default function MedicineFormModal({
 
   const handleTagChange = (value: string) => {
     setSelectedTags((prev) => {
-      let newTags: string[];
-      value === "All"
-        ? prev.length === 0
-          ? (newTags = [...tagsList.filter((tag) => tag !== "All")])
-          : (newTags = [])
-        : (newTags = prev.includes(value)
-            ? prev.filter((tag) => tag !== value) // Remove if exists
-            : [...prev, value]); // Add if not exists
+      let newTags = prev.includes(value)
+        ? prev.filter((tag) => tag !== value) // Remove if exists
+        : [...prev, value]; // Add if not exists
 
       // Update formData
       setFormData((prev: any) => ({
@@ -135,22 +143,40 @@ export default function MedicineFormModal({
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    // handle case the thumbnailUrl is null but its input set to ""
-    // which then saved in database converted to "null" and can cause error when loading img src
-    if (String(formData.medicineData.thumbnailUrl).trim() === "") {
-      setFormData((prev) => ({
+  const handleImageUploadSuccess = (result: any) => {
+    if (typeof result.info === "object" && "secure_url" in result.info) {
+      // Save image url to formData
+      setFormData((prev: any) => ({
         ...prev,
         medicineData: {
           ...prev.medicineData,
-          thumbnailUrl: null,
+          thumbnailUrl: result.info.secure_url,
         },
       }));
+      setSelectedImageName(result.info.original_filename);
+    }
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    // Create copy of formData
+    const submissionData = {
+      ...formData,
+      medicineData: { ...formData.medicineData },
+    };
+
+    // handle case the thumbnailUrl is null but its input set to ""
+    // which then saved in database converted to "null" and can cause error when loading img src
+    const isThumbnailEmpty =
+      !submissionData.medicineData.thumbnailUrl ||
+      String(submissionData.medicineData.thumbnailUrl).trim() === "";
+
+    if (isThumbnailEmpty) {
+      submissionData.medicineData.thumbnailUrl = null;
     }
 
-    onSubmit(event, formData);
+    onSubmit(event, submissionData);
   };
 
   if (!isOpen) return null;
@@ -189,6 +215,23 @@ export default function MedicineFormModal({
                     readOnly
                     className="w-full mt-2 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300"
                   />
+                </div>
+              ) : key === "thumbnailUrl" ? (
+                // Nếu là thumbnailUrl
+                <div className="space-y-2">
+                  <ImageUpload
+                    onSuccess={handleImageUploadSuccess}
+                    onError={(error) => {
+                      console.error("Error uploading image:", error);
+                      toast.error("Đã có lỗi xảy ra khi upload ảnh");
+                    }}
+                  />
+                  <p className="text-sm text-gray-500 text-wrap line-clamp-2">
+                    Original Name: {selectedImageName}
+                  </p>
+                  <p className="text-sm text-gray-500 text-wrap break-words">
+                    Source URL: {formData.medicineData.thumbnailUrl}
+                  </p>
                 </div>
               ) : (
                 // Nếu là các input bình thường

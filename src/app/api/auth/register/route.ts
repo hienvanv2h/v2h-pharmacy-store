@@ -5,19 +5,23 @@ import { generateUUID, hashPassword } from "@/lib/auth";
 import { UserCreateDTO } from "@/types/user";
 import {
   createCustomer,
-  createUser,
   getCustomerByPhoneNumber,
   getUserByUsername,
 } from "@/db/queries";
 import { CustomerDTO } from "@/types/customer";
+import { createUserAndProfileTransaction } from "@/db/transactions";
+import { UserProfileDTO } from "@/types/user-profile";
 
 export async function POST(request: NextRequest) {
-  const { username, password, name, address, phoneNumber } =
+  const { username, password, fullName, address, phoneNumber } =
     await request.json();
   // Check required fields
-  if (!username || !password || !name || !phoneNumber) {
+  if (!username || !password || !fullName || !address || !phoneNumber) {
     return NextResponse.json(
-      { error: "Username, password, name and phone number are required" },
+      {
+        error:
+          "Username, password, name, address and phone number are required",
+      },
       { status: 400 }
     );
   }
@@ -43,19 +47,30 @@ export async function POST(request: NextRequest) {
   const hashedPassword = await hashPassword(password);
   const uuid = generateUUID();
   try {
+    // Create new user
     const userDto: UserCreateDTO = {
       uuid,
       username,
       password: hashedPassword,
     };
-    const userCreateResponse = await createUser(userDto); // create new user
+    const userProfileDto: Partial<UserProfileDTO> = {
+      fullName,
+      address,
+      phoneNumber,
+    };
+    const userCreateResponse = await createUserAndProfileTransaction(
+      userDto,
+      userProfileDto
+    );
+
+    // Create new customer
     const customerDto: CustomerDTO = {
-      name,
+      name: fullName,
       phoneNumber,
       email: username,
       address,
     };
-    const customerCreateResponse = await createCustomer(customerDto); // create new customer
+    const customerCreateResponse = await createCustomer(customerDto);
 
     if (userCreateResponse && customerCreateResponse) {
       return NextResponse.json(

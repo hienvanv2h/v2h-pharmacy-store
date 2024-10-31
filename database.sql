@@ -39,6 +39,20 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_token ON sessions (token);
 CREATE INDEX idx_sessions_user_uuid ON sessions (user_uuid);
 
+CREATE TABLE IF NOT EXISTS user_profiles (
+  profile_id SERIAL PRIMARY KEY,
+  user_uuid UUID REFERENCES users(uuid) ON DELETE CASCADE,
+  full_name VARCHAR(100),
+  birth_date DATE,
+  address TEXT,
+  phone_number VARCHAR(20),
+  profile_picture_url VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_profiles_user_uuid ON user_profiles (user_uuid);
+
 CREATE TABLE
   IF NOT EXISTS suppliers (
     supplier_id SERIAL PRIMARY KEY,
@@ -72,9 +86,9 @@ CREATE TABLE IF NOT EXISTS medicines (
   price DECIMAL(10, 2) NOT NULL,
   quantity_unit VARCHAR(20) NOT NULL, -- Box, Blister pack, Bottle, Tube, Ampoule, Tablet/Pill, Capsule, Sachet, Vial, Bag
   tags JSONB DEFAULT '[]'::jsonb, -- ["new", "popular", "sale"]
+  thumbnail_url VARCHAR(255)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  thumbnail_url VARCHAR(255)
 );
 
 CREATE INDEX idx_medicines_uuid ON medicines (uuid);
@@ -220,13 +234,13 @@ CREATE TABLE
 
 CREATE INDEX idx_payments_order_uuid ON payments (order_uuid);
 
-INSERT INTO
-  users (username, password, role)
-VALUES
-  ('admin', 'v2h@12345', 'Admin'),
-  ('manager', 'v2h@12345', 'Manager'),
-  ('staff', 'v2h@12345', 'Staff'),
-  ('customer', 'v2h@12345', 'Customer');
+-- INSERT INTO
+--   users (username, password, role)
+-- VALUES
+--   ('admin', 'v2h@12345', 'Admin'),
+--   ('manager', 'v2h@12345', 'Manager'),
+--   ('staff', 'v2h@12345', 'Staff'),
+--   ('customer', 'v2h@12345', 'Customer');
 
 INSERT INTO
   suppliers (name, phone_number, address)
@@ -250,7 +264,7 @@ VALUES
 INSERT INTO
   customers (name, phone_number, email)
 VALUES
-  ('Anonymous', '1234567890', NULL),
+  ('Anonymous', '1234567890', NULL),    -- Default customer for unauthenticated users
   ('Customer 1', '1357901234', 'X9Lp8@example.com'),
   ('Customer 2', '2468101215', 'cus2@example.com');
 
@@ -274,9 +288,40 @@ CREATE VIEW vw_users_with_uuid AS
 SELECT uuid, username, password, role, is_enabled, created_at, updated_at
 FROM users;
 
+CREATE VIEW vw_user_profiles_view AS
+SELECT 
+  up.profile_id, 
+  up.user_uuid, 
+  up.full_name, 
+  up.birth_date, 
+  up.address, 
+  up.phone_number, 
+  up.profile_picture_url, 
+  up.created_at, 
+  up.updated_at, 
+  u.username,
+  u.role
+FROM user_profiles up
+JOIN users u ON up.user_uuid = u.uuid;
+
 CREATE VIEW vw_medicines_with_uuid AS
-SELECT uuid, name, category, description, price, quantity_unit, tags, thumbnail_url, created_at, updated_at
-FROM medicines;
+SELECT 
+  m.uuid, 
+  m.name, 
+  m.category, 
+  m.description, 
+  m.price, 
+  m.quantity_unit, 
+  m.tags, 
+  m.thumbnail_url, 
+  m.created_at, 
+  m.updated_at, 
+  COALESCE(SUM(mb.quantity), 0) AS total_quantity 
+FROM medicines m
+LEFT JOIN medicine_batches mb ON m.uuid = mb.medicine_uuid
+GROUP BY 
+  m.uuid, m.name, m.category, m.description, m.price, m.quantity_unit, 
+  m.tags, m.thumbnail_url, m.created_at, m.updated_at
 
 CREATE VIEW vw_medicines_with_details AS
 SELECT 
@@ -349,6 +394,7 @@ CREATE VIEW vw_order_details AS
 SELECT
   od.order_detail_id,
   od.order_uuid,
+  m.name as medicine_name,
   od.medicine_batch_id,
   od.quantity,
   od.price,
@@ -357,7 +403,6 @@ SELECT
   m.quantity_unit,
   mb.expiration_date
 FROM order_details od
-JOIN orders o ON od.order_uuid = o.uuid
 JOIN medicine_batches mb ON od.medicine_batch_id = mb.batch_id
 JOIN medicines m ON mb.medicine_uuid = m.uuid;
 
